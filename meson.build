@@ -2,8 +2,14 @@ project('volkano', 'cpp',
   version : '0.1',
   default_options : ['warning_level=3'])
 
-glm_proj = subproject('glm')
-glm_dep = glm_proj.get_variable('glm_dep')
+glm_dep = dependency('glm', required:false)
+if not glm_dep.found()
+  glm_proj = subproject('glm')
+  glm_dep = glm_proj.get_variable('glm_dep')
+endif
+
+glfw_dep = dependency('glfw', required:false)
+
 glfw_proj = subproject('glfw')
 glfw_dep = glfw_proj.get_variable('glfw_dep')
 
