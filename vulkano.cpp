@@ -55,7 +55,7 @@ int main(void) {
     GLFWwindow* window = glfwCreateWindow(WIDTH, HEIGHT, name.c_str(), nullptr, nullptr);
 
     //init vulkan
-    VkInstance vulkanInstance;
+    VkInstance vkInstance;
     VkApplicationInfo appInfo{};
     appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pApplicationName = name.c_str();
@@ -67,15 +67,12 @@ int main(void) {
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
-
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions;
     glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
     createInfo.enabledExtensionCount = glfwExtensionCount;
     createInfo.ppEnabledExtensionNames = glfwExtensions;
-
-
     if(enableValidationLayers) {
         if(!checkValidationLayerSupport()) {
             std::cerr << "Validation layers requested, but not available" << std::endl;
@@ -86,13 +83,41 @@ int main(void) {
     } else {
         createInfo.enabledLayerCount = 0;
     }
-
-
     
-    if(vkCreateInstance(&createInfo, nullptr, &vulkanInstance) != VK_SUCCESS) {
+    if(vkCreateInstance(&createInfo, nullptr, &vkInstance) != VK_SUCCESS) {
         std::cerr << "Failed to create Vulkan instance!" << std::endl;
         return 1;
     }
+
+    //pick physical device
+    VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+    uint32_t deviceCount;
+    vkEnumeratePhysicalDevices(vkInstance, &deviceCount, nullptr);
+    if(deviceCount == 0) {
+        std::cerr << "Brutha you need a vulkan GPU" << std::endl;
+        return 1;
+    }
+    std::vector<VkPhysicalDevice> devices(deviceCount);
+    vkEnumeratePhysicalDevices(vkInstance, &deviceCount, devices.data());
+    
+    for(VkPhysicalDevice device : devices) {
+        //check for device
+        VkPhysicalDeviceProperties physicalDeviceProps;
+        vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProps);
+        VkPhysicalDeviceFeatures physicalDeviceFeats;
+        vkGetPhysicalDeviceFeatures(physicalDevice, &physicalDeviceFeats);
+
+        if(physicalDeviceProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU && physicalDeviceFeats.geometryShader) {
+            physicalDevice = device;
+            break;
+        }
+    }
+    if(physicalDevice == VK_NULL_HANDLE) {
+        std::cerr << "No supported GPU found" << std::endl;
+        return 1;
+    }
+
+    //get device properties
 
     //main loop
     while (!glfwWindowShouldClose(window)) {
@@ -101,7 +126,7 @@ int main(void) {
 
     //cleanup
     //vk
-    vkDestroyInstance(vulkanInstance, nullptr);
+    vkDestroyInstance(vkInstance, nullptr);
     //glfw
     glfwDestroyWindow(window);
     glfwTerminate();
