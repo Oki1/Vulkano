@@ -97,10 +97,11 @@ int main(void) {
         std::cerr << "Brutha you need a vulkan GPU" << std::endl;
         return 1;
     }
+    printf("%i\n", (int)deviceCount);
     std::vector<VkPhysicalDevice> devices(deviceCount);
     vkEnumeratePhysicalDevices(vkInstance, &deviceCount, devices.data());
     
-    for(VkPhysicalDevice device : devices) {
+/*    for(VkPhysicalDevice device : devices) {
         //check for device
         VkPhysicalDeviceProperties physicalDeviceProps;
         vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProps);
@@ -116,7 +117,7 @@ int main(void) {
         std::cerr << "No supported GPU found" << std::endl;
         return 1;
     }
-
+*/
     //get device properties
 
     //main loop
