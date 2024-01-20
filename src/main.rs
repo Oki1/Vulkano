@@ -9,11 +9,13 @@ mod renderer;
 use renderer::vulkan::Vulkan;
 
 fn main() {
+    let app_name:String = "this is coldera baby".to_string();
+
     let event_loop = EventLoop::new().unwrap();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);
 
-    let renderer = Vulkan::new();
+    let renderer = Vulkan::new(app_name);
     println!("Renderer has been loaded");
 
     _ = event_loop.run(move |event, elwt| {
