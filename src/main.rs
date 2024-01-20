@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 #[allow(non_snake_case)]
 use winit::{
     event::{Event, WindowEvent},
@@ -15,7 +17,7 @@ fn main() {
     let window = WindowBuilder::new().build(&event_loop).unwrap();
     event_loop.set_control_flow(ControlFlow::Poll);
 
-    let renderer = Vulkan::new(app_name);
+    let renderer = Vulkan::new(app_name, Arc::new(window));
     println!("Renderer has been loaded");
 
     _ = event_loop.run(move |event, elwt| {
