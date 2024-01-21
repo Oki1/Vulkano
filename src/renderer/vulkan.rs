@@ -1,11 +1,12 @@
 use std::sync::Arc;
+use vulkano::device::DeviceExtensions;
 use vulkano::instance::debug::{
     DebugUtilsMessenger, DebugUtilsMessengerCallback, DebugUtilsMessengerCreateInfo,
 };
 use vulkano::{
     device::{
         physical::{PhysicalDevice, PhysicalDeviceType},
-        QueueFlags,
+        Device, DeviceCreateInfo, Features, Queue, QueueCreateInfo, QueueFlags,
     },
     instance::{Instance, InstanceCreateInfo, InstanceExtensions},
     library::VulkanLibrary,
@@ -33,7 +34,7 @@ pub struct Vulkan {
     library: Arc<VulkanLibrary>,
     instance: Arc<Instance>,
     surface: Arc<Surface>,
-    device: Arc<PhysicalDevice>,
+    physicalDevice: Arc<PhysicalDevice>,
     //the debug messenger that is called when a validation layer returns an error
     //It can also be called by other vulkan things idk
     #[cfg(debug_assertions)]
@@ -83,7 +84,7 @@ impl Vulkan {
         };
 
         //pick physical device
-        let device: Arc<PhysicalDevice>;
+        let physicalDevice: Arc<PhysicalDevice>;
         {
             let suitable: Vec<Arc<PhysicalDevice>> = instance
                 .enumerate_physical_devices()
@@ -91,13 +92,14 @@ impl Vulkan {
                 .filter(|d| -> bool {
                     //MUST HAVES!
                     //must have queue family that supports graphics commands
-                    d.queue_family_properties().iter().any(|q| {
-                        q.queue_flags.contains(QueueFlags::GRAPHICS)
-                    })
-                         }).collect();
+                    d.queue_family_properties()
+                        .iter()
+                        .any(|q| q.queue_flags.contains(QueueFlags::GRAPHICS))
+                })
+                .collect();
             assert!(!suitable.is_empty(), "No suitable physical devices found.");
             //disgusting but not knowledgable enoug in rust
-            device = suitable[suitable
+            physicalDevice = suitable[suitable
                 .iter()
                 .position(|d| -> bool {
                     //NICE TO HAVES
@@ -105,15 +107,50 @@ impl Vulkan {
                 })
                 .unwrap_or(0)]
             .clone();
+            #[cfg(debug_assertions)]
+            println!(
+                "Using device \"{}\"",
+                physicalDevice.properties().device_name
+            );
         }
-        #[cfg(debug_assertions)]
-        println!("Using device \"{}\"", device.properties().device_name);
+
+        //pick queue family in chosen physical device
+        let qFamIndex: u32 = physicalDevice
+            .queue_family_properties()
+            .iter()
+            .position(|qf| qf.queue_flags.contains(QueueFlags::GRAPHICS))
+            .unwrap()
+            .try_into()
+            .unwrap();
+
+        //create logical device
+        let device: Arc<Device>;
+        let queues: Vec<Arc<Queue>>;
+        {
+            let qIt;
+            (device, qIt) = Device::new(
+                physicalDevice.clone(),
+                DeviceCreateInfo {
+                    queue_create_infos: vec![QueueCreateInfo {
+                        queue_family_index: qFamIndex,
+                        ..Default::default()
+                    }],
+                    //currently device features are empty. Will add features once i need them
+                    enabled_extensions: DeviceExtensions::empty(),
+                    enabled_features: Features::empty(),
+                    ..Default::default()
+                },
+            )
+            .expect("Device creation failed");
+            queues = qIt.collect();
+        }
+        println!("{:?}\n\n\n{:?}", device, queues);
 
         Vulkan {
             library: library.clone(),
             instance: instance.clone(),
             surface: Surface::from_window(instance, handle).expect("Surface creation failed!"),
-            device: device.clone(),
+            physicalDevice: physicalDevice.clone(),
             #[cfg(debug_assertions)]
             _debugMessengerCallback,
         }
