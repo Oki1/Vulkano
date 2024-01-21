@@ -96,6 +96,8 @@ impl Vulkan {
                 matches!(d.properties().device_type, PhysicalDeviceType::DiscreteGpu)
             }).unwrap_or(0)].clone();
         }
+        #[cfg(debug_assertions)]
+        println!("Using device \"{}\"", device.properties().device_name);
 
         Vulkan {
             library: library.clone(),
