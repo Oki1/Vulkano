@@ -3,6 +3,7 @@ use vulkano::instance::debug::{
     DebugUtilsMessenger, DebugUtilsMessengerCallback, DebugUtilsMessengerCreateInfo,
 };
 use vulkano::{
+    device::physical::{PhysicalDevice, PhysicalDeviceType},
     instance::{Instance, InstanceCreateInfo, InstanceExtensions},
     library::VulkanLibrary,
     swapchain::Surface,
@@ -29,10 +30,11 @@ pub struct Vulkan {
     library: Arc<VulkanLibrary>,
     instance: Arc<Instance>,
     surface: Arc<Surface>,
+    device: Arc<PhysicalDevice>,
     //the debug messenger that is called when a validation layer returns an error
     //It can also be called by other vulkan things idk
     #[cfg(debug_assertions)]
-    _debugMessengerCallback: DebugUtilsMessenger
+    _debugMessengerCallback: DebugUtilsMessenger,
 }
 impl Vulkan {
     pub fn new(app_name: String, handle: Arc<Window>) -> Vulkan {
@@ -60,28 +62,45 @@ impl Vulkan {
             createInfo,
         )
         .expect("Instance creation failed");
-        
+
         //debug messenger
         //is safe unless the callback makes calls to the vulkan api (which it doesnt)
 
         #[cfg(debug_assertions)]
         let _debugMessengerCallback = unsafe {
             DebugUtilsMessenger::new(
-            instance.clone(),
-            DebugUtilsMessengerCreateInfo::user_callback(
-                DebugUtilsMessengerCallback::new(|mSeverity, mType, callbackData| {
-                    println!("Debug callback: {:?}", callbackData.message);
-                })
-                )
-            ).expect("messenger creation failed!")
+                instance.clone(),
+                DebugUtilsMessengerCreateInfo::user_callback(DebugUtilsMessengerCallback::new(
+                    |mSeverity, mType, callbackData| {
+                        println!("Debug callback: {:?}", callbackData.message);
+                    },
+                )),
+            )
+            .expect("messenger creation failed!")
         };
+
+        //pick physical device
+
+        let mut devices = instance
+            .enumerate_physical_devices()
+            .expect("physical devices not found!");
+        assert_ne!(0, devices.len(), "No Vulkan supporting devices found!");
+
+        let device = devices
+            .find(|d| matches!(d.properties().device_type, PhysicalDeviceType::DiscreteGpu))
+            .unwrap_or_else(|| -> Arc<PhysicalDevice> {
+                println!("No discrete gpu found");
+                instance.enumerate_physical_devices().unwrap().last().expect("SOMETHING WENT WRONG WHY ARE THERE NO GPUS HERE OH NO")
+            });
+        println!("{}", device.properties().device_name);
 
         Vulkan {
             library: library.clone(),
             instance: instance.clone(),
             surface: Surface::from_window(instance, handle).expect("Surface creation failed!"),
+            device: device,
             #[cfg(debug_assertions)]
-            _debugMessengerCallback
+            _debugMessengerCallback,
         }
     }
 }
