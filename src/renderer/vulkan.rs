@@ -80,25 +80,28 @@ impl Vulkan {
         };
 
         //pick physical device
-
-        let mut devices = instance
-            .enumerate_physical_devices()
-            .expect("physical devices not found!");
-        assert_ne!(0, devices.len(), "No Vulkan supporting devices found!");
-
-        let device = devices
-            .find(|d| matches!(d.properties().device_type, PhysicalDeviceType::DiscreteGpu))
-            .unwrap_or_else(|| -> Arc<PhysicalDevice> {
-                println!("No discrete gpu found");
-                instance.enumerate_physical_devices().unwrap().last().expect("SOMETHING WENT WRONG WHY ARE THERE NO GPUS HERE OH NO")
-            });
-        println!("{}", device.properties().device_name);
+        let device: Arc<PhysicalDevice>;
+        {
+            let suitable: Vec<Arc<PhysicalDevice>> = instance
+                .enumerate_physical_devices()
+                .expect("Physical devices could not be enumerated!")
+                .filter(|d| -> bool {
+                    //MUST HAVES!
+                    true
+                }).collect();
+        //    device = suitable[0].clone();
+            //disgusting but not knowledgable enoug in rust 
+            device = suitable[suitable.iter().position(|d| -> bool {
+                //NICE TO HAVES
+                matches!(d.properties().device_type, PhysicalDeviceType::DiscreteGpu)
+            }).unwrap_or(0)].clone();
+        }
 
         Vulkan {
             library: library.clone(),
             instance: instance.clone(),
             surface: Surface::from_window(instance, handle).expect("Surface creation failed!"),
-            device: device,
+            device: device.clone(),
             #[cfg(debug_assertions)]
             _debugMessengerCallback,
         }
