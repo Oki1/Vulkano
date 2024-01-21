@@ -1,1 +1,2 @@
 GET CORRECT DEBUGGING EXTENSIONS AND STUFF
+smart usage of queues as right now i just use the graphcis queue for everything

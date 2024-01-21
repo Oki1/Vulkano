@@ -3,7 +3,10 @@ use vulkano::instance::debug::{
     DebugUtilsMessenger, DebugUtilsMessengerCallback, DebugUtilsMessengerCreateInfo,
 };
 use vulkano::{
-    device::physical::{PhysicalDevice, PhysicalDeviceType},
+    device::{
+        physical::{PhysicalDevice, PhysicalDeviceType},
+        QueueFlags,
+    },
     instance::{Instance, InstanceCreateInfo, InstanceExtensions},
     library::VulkanLibrary,
     swapchain::Surface,
@@ -87,14 +90,21 @@ impl Vulkan {
                 .expect("Physical devices could not be enumerated!")
                 .filter(|d| -> bool {
                     //MUST HAVES!
-                    true
-                }).collect();
-        //    device = suitable[0].clone();
-            //disgusting but not knowledgable enoug in rust 
-            device = suitable[suitable.iter().position(|d| -> bool {
-                //NICE TO HAVES
-                matches!(d.properties().device_type, PhysicalDeviceType::DiscreteGpu)
-            }).unwrap_or(0)].clone();
+                    //must have queue family that supports graphics commands
+                    d.queue_family_properties().iter().any(|q| {
+                        q.queue_flags.contains(QueueFlags::GRAPHICS)
+                    })
+                         }).collect();
+            assert!(!suitable.is_empty(), "No suitable physical devices found.");
+            //disgusting but not knowledgable enoug in rust
+            device = suitable[suitable
+                .iter()
+                .position(|d| -> bool {
+                    //NICE TO HAVES
+                    matches!(d.properties().device_type, PhysicalDeviceType::DiscreteGpu)
+                })
+                .unwrap_or(0)]
+            .clone();
         }
         #[cfg(debug_assertions)]
         println!("Using device \"{}\"", device.properties().device_name);
