@@ -94,21 +94,21 @@ impl Vulkan {
             let suitable: Vec<Arc<PhysicalDevice>> = instance.clone()
                 .enumerate_physical_devices()
                 .expect("Physical devices could not be enumerated!")
-                .filter(|d| -> bool {
+                .filter(|pDevice| -> bool {
                     //MUST HAVES!
                     //check physical device extension support (if we have no swapchain support we
                     //cant render to the screen. Ex. server graphics cards)
-                    let exts = d.supported_extensions();
+                    let exts = pDevice.supported_extensions();
                     if !exts.khr_swapchain {
                         return false
                     }
 
-                    d.queue_family_properties()
+                    pDevice.queue_family_properties()
                         //filter based on queue families
                         .iter().enumerate().any(|(index, family)| {
                             family.queue_flags.contains(QueueFlags::GRAPHICS) && 
-                                d.surface_support(index.try_into().unwrap(), &surface).unwrap_or_else(
-                                    |_| panic!("Queue family {} (Physical device '{}') surface support lookup failed!", index, d.properties().device_name))
+                                pDevice.surface_support(index.try_into().unwrap(), &surface).unwrap_or_else(
+                                    |_| panic!("Queue family {} (Physical device '{}') surface support lookup failed!", index, pDevice.properties().device_name))
                         })
                         // .any(|(index, family)| family.queue_flags.contains(QueueFlags::GRAPHICS))
                 })
@@ -117,9 +117,9 @@ impl Vulkan {
             //disgusting but not knowledgable enoug in rust
             physicalDevice = suitable[suitable
                 .iter()
-                .position(|d| -> bool {
+                .position(|pDevice| -> bool {
                     //NICE TO HAVES
-                    matches!(d.properties().device_type, PhysicalDeviceType::DiscreteGpu)
+                    matches!(pDevice.properties().device_type, PhysicalDeviceType::DiscreteGpu)
                 })
                 .unwrap_or(0)]
             .clone();
