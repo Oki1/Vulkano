@@ -69,6 +69,10 @@ impl Vulkan {
         )
         .expect("Instance creation failed");
 
+        //surface creation
+        let surface: Arc<Surface> =
+            Surface::from_window(instance.clone(), handle).expect("Surface creation failed!");
+
         //debug messenger
         //is safe unless the callback makes calls to the vulkan api (which it doesnt)
 
