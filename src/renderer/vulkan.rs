@@ -39,6 +39,7 @@ pub struct Vulkan {
     //It can also be called by other vulkan things idk
     #[cfg(debug_assertions)]
     _debugMessengerCallback: DebugUtilsMessenger,
+    queues: Vec<Arc<Queue>>,
 }
 impl Vulkan {
     pub fn new(app_name: String, handle: Arc<Window>) -> Vulkan {
@@ -46,6 +47,7 @@ impl Vulkan {
 
         //get required instance extensions
         let mut extensions = Surface::required_extensions(&handle);
+        extensions.khr_surface = true;
 
         let mut createInfo = InstanceCreateInfo {
             application_name: Some(app_name),
@@ -94,8 +96,15 @@ impl Vulkan {
                 .expect("Physical devices could not be enumerated!")
                 .filter(|d| -> bool {
                     //MUST HAVES!
-                    //must have queue family that supports graphics commands
+                    //check physical device extension support (if we have no swapchain support we
+                    //cant render to the screen. Ex. server graphics cards)
+                    let exts = d.supported_extensions();
+                    if !exts.khr_swapchain {
+                        return false
+                    }
+
                     d.queue_family_properties()
+                        //filter based on queue families
                         .iter().enumerate().any(|(index, family)| {
                             family.queue_flags.contains(QueueFlags::GRAPHICS) && 
                                 d.surface_support(index.try_into().unwrap(), &surface).unwrap_or_else(
@@ -157,6 +166,7 @@ impl Vulkan {
             instance: instance.clone(),
             surface: surface.clone(),
             physicalDevice: physicalDevice.clone(),
+            queues,
             #[cfg(debug_assertions)]
             _debugMessengerCallback,
         }
