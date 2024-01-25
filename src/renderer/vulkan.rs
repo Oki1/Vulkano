@@ -83,18 +83,25 @@ impl Vulkan {
             .expect("messenger creation failed!")
         };
 
+        //create surface
+        let surface: Arc<Surface>= Surface::from_window(instance.clone(), handle).expect("Surface creation failed!");
+
         //pick physical device
         let physicalDevice: Arc<PhysicalDevice>;
         {
-            let suitable: Vec<Arc<PhysicalDevice>> = instance
+            let suitable: Vec<Arc<PhysicalDevice>> = instance.clone()
                 .enumerate_physical_devices()
                 .expect("Physical devices could not be enumerated!")
                 .filter(|d| -> bool {
                     //MUST HAVES!
                     //must have queue family that supports graphics commands
                     d.queue_family_properties()
-                        .iter()
-                        .any(|q| q.queue_flags.contains(QueueFlags::GRAPHICS))
+                        .iter().enumerate().any(|(index, family)| {
+                            family.queue_flags.contains(QueueFlags::GRAPHICS) && 
+                                d.surface_support(index.try_into().unwrap(), &surface).unwrap_or_else(
+                                    |_| panic!("Queue family {} (Physical device '{}') surface support lookup failed!", index, d.properties().device_name))
+                        })
+                        // .any(|(index, family)| family.queue_flags.contains(QueueFlags::GRAPHICS))
                 })
                 .collect();
             assert!(!suitable.is_empty(), "No suitable physical devices found.");
@@ -144,12 +151,11 @@ impl Vulkan {
             .expect("Device creation failed");
             queues = qIt.collect();
         }
-        println!("{:?}\n\n\n{:?}", device, queues);
 
         Vulkan {
             library: library.clone(),
             instance: instance.clone(),
-            surface: Surface::from_window(instance, handle).expect("Surface creation failed!"),
+            surface: surface.clone(),
             physicalDevice: physicalDevice.clone(),
             #[cfg(debug_assertions)]
             _debugMessengerCallback,
