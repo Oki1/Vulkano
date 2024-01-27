@@ -71,7 +71,7 @@ impl Vulkan {
 
         //surface creation
         let surface: Arc<Surface> =
-            Surface::from_window(instance.clone(), handle).expect("Surface creation failed!");
+            Surface::from_window(instance.clone(), handle.clone()).expect("Surface creation failed!");
 
         //debug messenger
         //is safe unless the callback makes calls to the vulkan api (which it doesnt)
@@ -90,7 +90,7 @@ impl Vulkan {
         };
 
         //create surface
-        let surface: Arc<Surface>= Surface::from_window(instance.clone(), handle).expect("Surface creation failed!");
+        let surface: Arc<Surface>= Surface::from_window(instance.clone(), handle.clone()).expect("Surface creation failed!");
 
         //pick physical device
         let physicalDevice: Arc<PhysicalDevice>;
