@@ -156,28 +156,19 @@ impl Vulkan {
             let surInfo: SurfaceInfo = SurfaceInfo::default();
             let capabilities = physicalDevice.surface_capabilities(&surface, surInfo.clone()).unwrap();
             let formats      = physicalDevice.surface_formats(&surface, surInfo.clone()).unwrap();
-            let presentModes: Vec<PresentMode>= physicalDevice.surface_present_modes(&surface, surInfo).unwrap().collect();
+            let mut presentModes = physicalDevice.surface_present_modes(&surface, surInfo).unwrap();
 
-            //shouldnt ever panick, as it was already checked 
+            let first = presentModes.next();
 
             //pick surface format and swap chain presentation mode
             let surFormat = formats.iter().find(|(format, colorSpace)| {
                 matches!(format, Format::B8G8R8A8_SRGB) && matches!(colorSpace, ColorSpace::SrgbNonLinear)
             }).unwrap_or(&formats[0]);
-
-            //i hate this
-            //this is slow. doesnt matter coz max length of presentModes = 5
-            let presentMode;
-            if presentModes.contains(&PresentMode::Mailbox) {
-                presentMode = PresentMode::Mailbox;
-            } else if presentModes.contains(&PresentMode::Immediate) {
-                presentMode = PresentMode::Immediate;
-            } else {
-                presentMode =PresentMode::Fifo;
-            }
+            
+            let presentMode = presentModes.find(|mode| matches!(mode, PresentMode::Mailbox)).unwrap_or(first);
 
             #[cfg(debug_assertions)]
-            println!("Rendering with {:?} surface format and ({:?}) presentation mode", surFormat, presentMode);
+            println!("Rendering with {:?} surface format", surFormat);
         }
 
         //pick queue family in chosen physical device
