@@ -3,6 +3,7 @@ use vulkano::device::DeviceExtensions;
 use vulkano::instance::debug::{
     DebugUtilsMessenger, DebugUtilsMessengerCallback, DebugUtilsMessengerCreateInfo,
 };
+use vulkano::swapchain::SurfaceInfo;
 use vulkano::{
     device::{
         physical::{PhysicalDevice, PhysicalDeviceType},
@@ -102,10 +103,26 @@ impl Vulkan {
                     //MUST HAVES!
                     //check physical device extension support (if we have no swapchain support we
                     //cant render to the screen. Ex. server graphics cards)
-                    let exts = pDevice.supported_extensions();
-                    if !exts.khr_swapchain {
-                        return false
+                    {
+                        let exts = pDevice.supported_extensions();
+                        if !exts.khr_swapchain {
+                            return false
+                        }
                     }
+                    
+                    //check swap chain capabilities
+                    {
+                        let surInfo: SurfaceInfo = SurfaceInfo::default();
+                        let capabilities = pDevice.surface_capabilities(&surface, surInfo.clone()).unwrap();
+                        let formats      = pDevice.surface_formats(&surface, surInfo.clone()).unwrap();
+                        let mut presentModes = pDevice.surface_present_modes(&surface, surInfo).unwrap();
+                        
+                        //just check if a display format and present mode exist
+                        if formats.is_empty() || presentModes.next().is_none() {
+                            return false
+                        }
+                    }
+                    
 
                     pDevice.queue_family_properties()
                         //filter based on queue families
@@ -114,7 +131,6 @@ impl Vulkan {
                                 pDevice.surface_support(index.try_into().unwrap(), &surface).unwrap_or_else(
                                     |_| panic!("Queue family {} (Physical device '{}') surface support lookup failed!", index, pDevice.properties().device_name))
                         })
-                        // .any(|(index, family)| family.queue_flags.contains(QueueFlags::GRAPHICS))
                 })
                 .collect();
             assert!(!suitable.is_empty(), "No suitable physical devices found.");
@@ -156,7 +172,10 @@ impl Vulkan {
                         ..Default::default()
                     }],
                     //currently device features are empty. Will add features once i need them
-                    enabled_extensions: DeviceExtensions::empty(),
+                    enabled_extensions: DeviceExtensions {
+                        khr_swapchain: true,
+                        ..Default::default()
+                    },
                     enabled_features: Features::empty(),
                     ..Default::default()
                 },
